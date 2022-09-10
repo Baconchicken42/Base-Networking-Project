@@ -10,7 +10,9 @@ public class GameManager : NetworkBehaviour {
     public NetworkCommandLine.StartModes serverStartType = NetworkCommandLine.StartModes.CHOOSE;
     private GameObject networkCmdlnObj;
 
-    public Color[] playerColors = new Color[] { Color.blue, Color.green, Color.yellow, Color.grey, Color.cyan };
+    //?
+
+    public Color[] playerColors = new Color[] { Color.magenta, Color.yellow, Color.blue, Color.grey, Color.cyan };
     public int colorIndex = 0;
 
 
