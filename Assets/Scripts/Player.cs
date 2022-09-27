@@ -12,6 +12,10 @@ public class Player : NetworkBehaviour {
     public float rotationSpeed = .25f;
     public Camera _camera;
 
+    public Transform bulletSpawn;
+    public Rigidbody bullet;
+    public float bulletSpeed = 10f;
+
     
     
     public Vector3[] CalcMovement()
@@ -66,6 +70,11 @@ public class Player : NetworkBehaviour {
             transform.Translate(PositionChange.Value);
             transform.Rotate(RotationChange.Value);
         }
+
+        if (Input.GetKeyDown(KeyCode.Mouse0) && IsOwner)
+        {
+            fireBulletServerRPC();
+        }
     }
 
     private void Start()
@@ -92,4 +101,12 @@ public class Player : NetworkBehaviour {
         applyPlayerColor();
     }
 
+    [ServerRpc]
+    public void fireBulletServerRPC()
+    {
+        Rigidbody newBullet = Instantiate(bullet, bulletSpawn.position, bullet.rotation);
+        newBullet.velocity = bulletSpawn.forward * bulletSpeed;
+        newBullet.gameObject.GetComponent<NetworkObject>().Spawn();
+        Destroy(newBullet.gameObject, 3);
+    }
 }
