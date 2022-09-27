@@ -2,34 +2,51 @@ using Unity.Netcode;
 using UnityEngine;
 
 public class Player : NetworkBehaviour {
-    public NetworkVariable<Vector3> Position = new NetworkVariable<Vector3>();
+    public NetworkVariable<Vector3> PositionChange = new NetworkVariable<Vector3>();
+    public NetworkVariable<Vector3> RotationChange = new NetworkVariable<Vector3>();
     public NetworkVariable<Color> playerColor = new NetworkVariable<Color>(Color.red);
 
     
 
     public float movementSpeed = .25f;
+    public float rotationSpeed = .25f;
+    public Camera _camera;
 
     
     
-    public Vector3 CalcMovement()
+    public Vector3[] CalcMovement()
     {
-        Vector3 moveVect = new Vector3(Input.GetAxis("Horizontal"), 0, Input.GetAxis("Vertical"));
+        float x_move = 0f;
+        float z_move = Input.GetAxis("Vertical");
+        float y_rot = 0f;
+
+        if (!(Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)))
+        {
+            x_move = Input.GetAxis("Horizontal");
+        }
+        else
+        {
+            y_rot = Input.GetAxis("Horizontal");
+        }
+
+        Vector3 moveVect = new Vector3(x_move, 0, z_move);
         moveVect *= movementSpeed;
-        return moveVect;
+
+        Vector3 rotVect = new Vector3(0, y_rot, 0);
+        rotVect *= rotationSpeed;
+
+        return new[] { moveVect, rotVect };
     }
 
     
     //Server Remote Procedure Call
     [ServerRpc]
-    void RequestPositionForMovementServerRpc(Vector3 movement)
+    void RequestPositionForMovementServerRpc(Vector3 movement, Vector3 rotation)
     {
-        Position.Value += movement;
+        if (!IsServer && !IsHost) return;
 
-        float planeSize = 5f;
-        Vector3 newPosition = Position.Value += movement;
-        newPosition.x = Mathf.Clamp(newPosition.x, planeSize * -1, planeSize);
-        newPosition.z = Mathf.Clamp(newPosition.z, planeSize * -1, planeSize);
-        Position.Value = newPosition;
+        PositionChange.Value = movement;
+        RotationChange.Value = rotation;
     }
 
     
@@ -38,15 +55,16 @@ public class Player : NetworkBehaviour {
     {
         if (IsOwner)
         {
-            Vector3 move = CalcMovement();
-            if (move.magnitude > 0)
+            Vector3[] movementResults = CalcMovement();
+            if (movementResults[0].magnitude > 0 || movementResults[1].magnitude > 0)
             {
-                RequestPositionForMovementServerRpc(move);
+                RequestPositionForMovementServerRpc(movementResults[0], movementResults[1]);
             }
         }
-        else
+        if (!IsOwner || IsHost)
         {
-            transform.position = Position.Value;
+            transform.Translate(PositionChange.Value);
+            transform.Rotate(RotationChange.Value);
         }
     }
 
@@ -58,6 +76,10 @@ public class Player : NetworkBehaviour {
         playerColor.OnValueChanged += OnPlayerColorChanged;
         if (IsOwner)
             manager.RequestNewPlayerColorServerRpc();
+        else
+        {
+            _camera.enabled = false;
+        }
     }
 
     public void applyPlayerColor()
